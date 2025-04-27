@@ -99,6 +99,19 @@ def enable_command(channel: str, cmd: str):
     cs.disabled_commands = ",".join(sorted(disabled))
     cs.save()
 
+def get_channel_log_context(channel: str, limit: int = 20):
+    """
+    Returns the last `limit` lines of chat log for the given channel, ordered oldest to newest.
+    """
+    rows = (
+        Log.select()
+        .where(Log.target == channel)
+        .order_by(Log.timestamp.desc())
+        .limit(limit)
+    )
+    # Return as list of (timestamp, nick, message), oldest first
+    return [ (row.timestamp, row.nick, row.message) for row in reversed(list(rows)) ]
+
 # Migration helpers
 def get_schema_version() -> int:
     sv = SchemaVersion.select().order_by(SchemaVersion.version.desc()).first()

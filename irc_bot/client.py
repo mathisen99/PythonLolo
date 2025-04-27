@@ -144,6 +144,13 @@ class IRCBot:
                         if line.strip():
                             self.connection.privmsg(config.IRC_CHANNEL, line)
                             logger.info(f"IRC >> PRIVMSG {config.IRC_CHANNEL} :{line}")
+                            # Log bot's own message to the DB
+                            db.log_message(
+                                f"{config.BOT_NICK}!bot@localhost",
+                                config.BOT_NICK,
+                                config.IRC_CHANNEL,
+                                line
+                            )
             except json.JSONDecodeError:
                 logger.warning("WS >> invalid JSON")
 
