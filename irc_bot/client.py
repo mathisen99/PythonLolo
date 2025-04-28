@@ -208,6 +208,8 @@ class IRCBot:
         return self.handlers.on_nick(connection, event)
 
 async def main():
+    # Ensure DB is initialized (tables created) before any queries
+    db.init_db()
     # prompt for owner secret if needed
     # check for existing Owner via Peewee
     owner = db.User.get_or_none(db.User.level == "Owner")
