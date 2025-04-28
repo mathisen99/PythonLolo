@@ -132,6 +132,9 @@ class IRCBot:
                             self.connection.part(target)
                             logger.info(f"IRC >> PART {target}")
                             return
+                    # Always reply in the channel/user where the command or mention was received
+                    # Use the target from the original IRC event, passed via the logic server
+                    target = data.get("target", config.IRC_CHANNEL)
                     logger.info(f"Sending IRC response: {response}")
                     # Sanitize and split all outgoing messages
                     if isinstance(response, list):
@@ -142,13 +145,13 @@ class IRCBot:
                         lines = split_irc_messages(sanitize_for_irc(str(response)))
                     for line in lines:
                         if line.strip():
-                            self.connection.privmsg(config.IRC_CHANNEL, line)
-                            logger.info(f"IRC >> PRIVMSG {config.IRC_CHANNEL} :{line}")
+                            self.connection.privmsg(target, line)
+                            logger.info(f"IRC >> PRIVMSG {target} :{line}")
                             # Log bot's own message to the DB
                             db.log_message(
                                 f"{config.BOT_NICK}!bot@localhost",
                                 config.BOT_NICK,
-                                config.IRC_CHANNEL,
+                                target,
                                 line
                             )
             except json.JSONDecodeError:
