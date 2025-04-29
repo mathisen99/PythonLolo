@@ -41,12 +41,16 @@ class IRCBot:
         self.connection.add_global_handler("part", self.handlers.on_part)
         self.connection.add_global_handler("nick", self.handlers.on_nick)
         self._irc_reconnect_task = None  # Track running reconnect task
+        self._ws_heartbeat_task = None
+        self._ws_heartbeat_event = None
 
     def on_disconnect(self, connection, event):
         logger.warning("Disconnected from IRC, scheduling reconnect")
+        print("[IRC Bot] Disconnected from IRC, scheduling reconnect")  # Ensure visibility
         # Prevent multiple reconnect loops
         if self._irc_reconnect_task and not self._irc_reconnect_task.done():
             logger.warning("Reconnect already in progress, skipping duplicate trigger.")
+            print("[IRC Bot] Reconnect already in progress, skipping duplicate trigger.")
             return
         self._irc_reconnect_task = asyncio.create_task(self._irc_reconnect())
 
@@ -54,6 +58,7 @@ class IRCBot:
         backoff = 1
         while True:
             try:
+                print(f"[IRC Bot] Attempting IRC reconnect...")
                 conn = self.reactor.server().connect(
                     config.IRC_SERVER, config.IRC_PORT, config.BOT_NICK
                 )
@@ -68,11 +73,13 @@ class IRCBot:
                 conn.add_global_handler("part", self.handlers.on_part)
                 conn.add_global_handler("nick", self.handlers.on_nick)
                 logger.info("IRC reconnected successfully")
+                print("[IRC Bot] IRC reconnected successfully")
                 self._irc_reconnect_task = None
                 backoff = 1  # Reset backoff after successful reconnect
                 return
             except Exception as e:
                 logger.warning(f"IRC reconnect failed: {e}, retrying in {backoff}s")
+                print(f"[IRC Bot] IRC reconnect failed: {e}, retrying in {backoff}s")
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 60)
 
@@ -105,6 +112,11 @@ class IRCBot:
             logger.debug(f"WS << {msg}")
             try:
                 data = json.loads(msg)
+                # Heartbeat reply handler
+                if data.get("type") == "heartbeat":
+                    if self._ws_heartbeat_event and not self._ws_heartbeat_event.done():
+                        self._ws_heartbeat_event.set_result(True)
+                    continue
                 response = data.get("response")
                 if response:
                     # Handle __PRIVMSG__ special marker for !say command
@@ -119,19 +131,13 @@ class IRCBot:
                                     if line.strip():
                                         self.connection.privmsg(target, line)
                                         logger.info(f"IRC >> PRIVMSG {target} :{line}")
-                                return
-                        elif response.startswith("__JOIN__::"):
-                            target = response.split("::", 1)[1]
-                            logger.info(f"Joining channel: {target}")
-                            self.connection.join(target)
-                            logger.info(f"IRC >> JOIN {target}")
-                            return
-                        elif response.startswith("__PART__::"):
-                            target = response.split("::", 1)[1]
-                            logger.info(f"Parting channel: {target}")
-                            self.connection.part(target)
-                            logger.info(f"IRC >> PART {target}")
-                            return
+                                        # Log bot's own message to the DB
+                                        db.log_message(
+                                            f"{config.BOT_NICK}!bot@localhost",
+                                            config.BOT_NICK,
+                                            target,
+                                            line
+                                        )
                     # Always reply in the channel/user where the command or mention was received
                     # Use the target from the original IRC event, passed via the logic server
                     target = data.get("target", config.IRC_CHANNEL)
@@ -169,6 +175,8 @@ class IRCBot:
                 self.ws_down_since = None
                 logger.info(f"WS connected to {uri}")
                 backoff = 1  # Reset backoff after successful WS connect
+                # start WS heartbeat
+                self._ws_heartbeat_task = asyncio.create_task(self.ws_heartbeat())
                 await self.process_ws()
             except Exception as e:
                 now = datetime.now()
@@ -179,6 +187,31 @@ class IRCBot:
                 logger.warning(f"WS disconnected: {e}; reconnecting in {backoff}s")
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 60)
+
+    async def ws_heartbeat(self, interval=60, timeout=10):
+        while True:
+            await asyncio.sleep(interval)
+            if not self.ws:
+                continue
+            try:
+                # Send WS heartbeat
+                heartbeat_msg = json.dumps({"type": "heartbeat"})
+                await self.ws.send(heartbeat_msg)
+                logger.debug("Sent WS heartbeat")
+                print("💚 [IRC Bot] Sent WS heartbeat")
+                # Set up event for reply
+                self._ws_heartbeat_event = asyncio.get_event_loop().create_future()
+                try:
+                    await asyncio.wait_for(self._ws_heartbeat_event, timeout)
+                    logger.debug("Received WS heartbeat reply")
+                    print("💚 [IRC Bot] WS heartbeat OK")
+                except asyncio.TimeoutError:
+                    logger.warning("WS heartbeat timed out, reconnecting...")
+                    print("💔 [IRC Bot] WS heartbeat timed out, reconnecting...")
+                    self.ws = None
+            except Exception as e:
+                logger.error(f"WS heartbeat error: {e}")
+                print(f"💔 [IRC Bot] WS heartbeat error: {e}")
 
     def on_welcome(self, connection, event):
         return self.handlers.on_welcome(connection, event)
@@ -245,4 +278,5 @@ async def main():
         loop.remove_signal_handler(s)
 
 if __name__ == '__main__':
+    print("[IRC Bot] Starting up...")
     asyncio.run(main())

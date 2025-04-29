@@ -13,6 +13,11 @@ async def handler(websocket, path=None):
         async for message in websocket:
             logger.debug(f"Received raw WS message: {message}")
             data = json.loads(message)
+            # Heartbeat handler
+            if data.get("type") == "heartbeat":
+                await websocket.send(json.dumps({"type": "heartbeat"}))
+                logger.debug("Replied to WS heartbeat")
+                continue
             # command handling
             raw_line = data.get("line")
             if raw_line:
