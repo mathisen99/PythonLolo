@@ -126,20 +126,31 @@ class IRCBot:
                             if len(parts) == 3:
                                 target, message = parts[1], parts[2]
                                 logger.info(f"Sending IRC PM: {message} to {target}")
-                                lines = split_irc_messages(sanitize_for_irc(message))
+                                lines = split_irc_messages(message)
                                 for line in lines:
                                     if line.strip():
                                         self.connection.privmsg(target, line)
                                         logger.info(f"IRC >> PRIVMSG {target} :{line}")
-                                        # Log bot's own message to the DB
                                         db.log_message(
                                             f"{config.BOT_NICK}!bot@localhost",
                                             config.BOT_NICK,
                                             target,
                                             line
                                         )
+                                return
+                        elif response.startswith("__JOIN__::"):
+                            target = response.split("::", 1)[1]
+                            logger.info(f"Joining channel: {target}")
+                            self.connection.join(target)
+                            logger.info(f"IRC >> JOIN {target}")
+                            return
+                        elif response.startswith("__PART__::"):
+                            target = response.split("::", 1)[1]
+                            logger.info(f"Parting channel: {target}")
+                            self.connection.part(target)
+                            logger.info(f"IRC >> PART {target}")
+                            return
                     # Always reply in the channel/user where the command or mention was received
-                    # Use the target from the original IRC event, passed via the logic server
                     target = data.get("target", config.IRC_CHANNEL)
                     logger.info(f"Sending IRC response: {response}")
                     # Sanitize and split all outgoing messages
@@ -198,20 +209,20 @@ class IRCBot:
                 heartbeat_msg = json.dumps({"type": "heartbeat"})
                 await self.ws.send(heartbeat_msg)
                 logger.debug("Sent WS heartbeat")
-                print("💚 [IRC Bot] Sent WS heartbeat")
+                print(" [IRC Bot] Sent WS heartbeat")
                 # Set up event for reply
                 self._ws_heartbeat_event = asyncio.get_event_loop().create_future()
                 try:
                     await asyncio.wait_for(self._ws_heartbeat_event, timeout)
                     logger.debug("Received WS heartbeat reply")
-                    print("💚 [IRC Bot] WS heartbeat OK")
+                    print(" [IRC Bot] WS heartbeat OK")
                 except asyncio.TimeoutError:
                     logger.warning("WS heartbeat timed out, reconnecting...")
-                    print("💔 [IRC Bot] WS heartbeat timed out, reconnecting...")
+                    print(" [IRC Bot] WS heartbeat timed out, reconnecting...")
                     self.ws = None
             except Exception as e:
                 logger.error(f"WS heartbeat error: {e}")
-                print(f"💔 [IRC Bot] WS heartbeat error: {e}")
+                print(f" [IRC Bot] WS heartbeat error: {e}")
 
     def on_welcome(self, connection, event):
         return self.handlers.on_welcome(connection, event)
