@@ -21,9 +21,12 @@ async def handler(websocket, path=None):
             # command handling
             raw_line = data.get("line")
             if raw_line:
-                resp = await handle_line(raw_line)
-                if resp:
-                    logger.info(f"Sending response: {resp}")
+                resp, target = await handle_line(raw_line)
+                if resp and target:
+                    logger.info(f"Sending response: {resp} to {target}")
+                    await websocket.send(json.dumps({"response": resp, "target": target}))
+                elif resp:
+                    logger.info(f"Sending response: {resp} (no target)")
                     await websocket.send(json.dumps({"response": resp}))
     except websockets.exceptions.ConnectionClosed:
         logger.info("Client disconnected")
