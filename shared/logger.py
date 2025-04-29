@@ -1,7 +1,6 @@
 import logging
 from colorama import Fore, Style, init
 
-# initialize colorama
 init(autoreset=True)
 
 class ColoredFormatter(logging.Formatter):
@@ -14,7 +13,6 @@ class ColoredFormatter(logging.Formatter):
     }
 
     def format(self, record):
-        # Color WS and IRC message prefixes distinctly
         original = record.getMessage()
         if original.startswith("IRC <<") or original.startswith("IRC >>"):
             record.msg = Fore.YELLOW + original + Style.RESET_ALL

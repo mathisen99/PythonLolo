@@ -33,7 +33,6 @@ def commands_command(channel, source, *args):
 @command("reload")
 def reload_command(channel, source, *args):
     """Reload all command modules (admin only)."""
-    # This is a stub; actual reload logic is handled by !admin plugin reload
     return "Use !admin plugin reload <name> to reload plugins."
 
 @command("status")
@@ -69,7 +68,6 @@ def say_command(channel, source, *args):
         return "Usage: !say <target> <message>"
     target = args[0]
     message = ' '.join(args[1:])
-    # Special marker for the IRC bot to send to a specific target
     return f"__PRIVMSG__::{target}::{message}"
 
 @command("join")
@@ -81,7 +79,6 @@ def join_command(channel, source, *args):
     if len(args) != 1 or not args[0].startswith("#"):
         return "Usage: !join <#channel>"
     target = args[0]
-    # Special marker for the IRC bot to join a channel
     return f"__JOIN__::{target}"
 
 @command("part")
@@ -90,5 +87,4 @@ def part_command(channel, source, *args):
     if len(args) != 1 or not args[0].startswith("#"):
         return "Usage: !part <#channel>"
     target = args[0]
-    # Special marker for the IRC bot to part a channel
     return f"__PART__::{target}"

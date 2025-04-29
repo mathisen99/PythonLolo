@@ -13,53 +13,43 @@ class IRCHandlers:
 
     def on_welcome(self, connection, event):
         logger.info("Connected to IRC, joining channels")
-        # join primary channel
         connection.join(config.IRC_CHANNEL)
         logger.info(f"IRC >> JOIN {config.IRC_CHANNEL}")
-        # join additional auto channels
         for chan in config.IRC_AUTOCHANNELS:
             connection.join(chan)
             logger.info(f"IRC >> JOIN {chan}")
 
     def on_pubmsg(self, connection, event):
         hostmask = event.source
-        # IGNORE: Check if user is ignored
         if db.get_user_level(hostmask) == "Ignored":
             return
         raw = event.arguments[0]
-        # local admin user commands handled here
         prefix = db.get_prefix(event.target)
         if any(raw.startswith(prefix + f"admin user {sub}") for sub in ("add","remove","set")):
             self.client.handlers.handle_admin(connection, event)
             return
-        # log public message
         db.log_message(event.source, event.source.split('!')[0], event.target, raw)
         message = raw
-        # if logic server down and user mentions bot, notify downtime
         if config.BOT_NICK.lower() in message.lower() and self.client.ws_down_since:
             downtime = int((datetime.now() - self.client.ws_down_since).total_seconds())
             msg = f"Command server is down for {downtime}s"
             connection.privmsg(config.IRC_CHANNEL, msg)
             logger.info(f"IRC >> PRIVMSG {config.IRC_CHANNEL} :{msg}")
             return
-        # forward message to logic server for command processing
         raw_line = f"{event.source} PRIVMSG {event.target} :{message}"
         asyncio.create_task(self.client.send_ws(raw_line))
 
     def on_privmsg(self, connection, event):
         message = event.arguments[0]
         hostmask = event.source
-        # IGNORE: Check if user is ignored
         if db.get_user_level(hostmask) == "Ignored":
             return
-        # local admin user commands via private message
         prefix_pm = db.get_prefix(event.target)
         if any(message.startswith(prefix_pm + f"admin user {sub}") for sub in ("add","remove","set")):
             self.client.handlers.handle_admin(connection, event)
             return
         nick = event.source.split('!')[0]
         hostmask = event.source
-        # owner verification via private PM
         if self.client.owner_setup_pending and message.startswith("!verify "):
             provided = message.split(" ", 1)[1].strip()
             if provided == self.client.verify_secret:
@@ -70,9 +60,7 @@ class IRCHandlers:
             else:
                 connection.privmsg(nick, "Invalid passphrase.")
             return
-        # log private message
         db.log_message(event.source, nick, nick, message)
-        # forward private message to logic server
         raw = f"{event.source} PRIVMSG {nick} :{message}"
         asyncio.create_task(self.client.send_ws(raw))
 
@@ -130,7 +118,6 @@ class IRCHandlers:
         channel = event.target
         nick = event.source.split('!')[0]
         hostmask = event.source
-        # IGNORE: Check if user is ignored
         if db.get_user_level(hostmask) == "Ignored":
             return
         db.log_message(hostmask, nick, channel, f"{nick} joined {channel}")
@@ -141,7 +128,6 @@ class IRCHandlers:
         channel = event.target
         nick = event.source.split('!')[0]
         hostmask = event.source
-        # IGNORE: Check if user is ignored
         if db.get_user_level(hostmask) == "Ignored":
             return
         db.log_message(hostmask, nick, channel, f"{nick} left {channel}")
@@ -152,7 +138,6 @@ class IRCHandlers:
         old_nick = event.source.split('!')[0]
         new_nick = event.target
         hostmask = event.source
-        # IGNORE: Check if user is ignored
         if db.get_user_level(hostmask) == "Ignored":
             return
         db.log_message(hostmask, old_nick, new_nick, f"{old_nick} is now {new_nick}")

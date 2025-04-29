@@ -2,7 +2,6 @@ from shared.logger import setup_logger
 logger = setup_logger("commands")
 
 from .decorator import COMMANDS, command
-# import submodules to register commands
 from .test import *
 from .help import *
 from .admin import *
@@ -12,7 +11,6 @@ from .enable import *
 from .base import *
 from .parser import handle_line
 
-# Dynamically load plugin modules
 import pkgutil
 import importlib
 import logic_server.plugins as plugins

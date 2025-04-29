@@ -30,7 +30,6 @@ def download_and_load_plugin(plugin_url: str) -> str:
         with open(plugin_path, 'w', encoding='utf-8') as f:
             f.write(code)
         logger.info(f"Downloaded plugin {plugin_name} from {plugin_url}")
-        # Try to load the plugin
         module_name = f"logic_server.plugins.{plugin_name}"
         if module_name in sys.modules:
             importlib.reload(sys.modules[module_name])

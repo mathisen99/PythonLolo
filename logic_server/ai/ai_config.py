@@ -14,5 +14,4 @@ top_p = 0.95
 stop_sequences = []  
 safety_settings = None
 
-# AI context lines
 AI_CONTEXT_LINES = 50

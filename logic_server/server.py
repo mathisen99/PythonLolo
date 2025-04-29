@@ -13,12 +13,10 @@ async def handler(websocket, path=None):
         async for message in websocket:
             logger.debug(f"Received raw WS message: {message}")
             data = json.loads(message)
-            # Heartbeat handler
             if data.get("type") == "heartbeat":
                 await websocket.send(json.dumps({"type": "heartbeat"}))
                 logger.debug("Replied to WS heartbeat")
                 continue
-            # command handling
             raw_line = data.get("line")
             if raw_line:
                 resp, target = await handle_line(raw_line)
@@ -38,7 +36,6 @@ async def main():
         config.LOGIC_SERVER_PORT,
     )
     logger.info(f"Logic server running at ws://{config.LOGIC_SERVER_HOST}:{config.LOGIC_SERVER_PORT}")
-    # graceful shutdown on SIGINT/SIGTERM
     loop = asyncio.get_running_loop()
     stop = loop.create_future()
     loop.add_signal_handler(signal.SIGINT, stop.set_result, None)

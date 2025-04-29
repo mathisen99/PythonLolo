@@ -12,16 +12,13 @@ logger = setup_logger("commands")
 @command("admin")
 def admin_command(channel: str, *args) -> str:
     """Admin operations: user & plugin management"""
-    # list users
     if len(args) >= 2 and args[0] == "user" and args[1] == "list":
         users = User.select()
         if not users:
             return "No users found."
         return "Users: " + ", ".join(f"{u.nick} ({u.level})" for u in users)
-    # help for user subcommand when no action specified
     if len(args) >= 1 and args[0] == "user":
         return "Usage: !admin user list"
-    # channel autojoin management
     if len(args) >= 1 and args[0] == "channels":
         sub_args = args[1:]
         if not sub_args or sub_args[0] not in ("add", "remove", "list"):
@@ -48,11 +45,9 @@ def admin_command(channel: str, *args) -> str:
             else:
                 return "No auto-join channels set."
         if changed:
-            # Persist changes
             config._conf["IRC_AUTOCHANNELS"] = channels
             config.save_config()
         return msg
-    # plugin management
     if len(args) >= 1 and args[0] == "plugin":
         action_args = args[1:]
         if not action_args:
@@ -96,7 +91,6 @@ def admin_command(channel: str, *args) -> str:
                 except Exception as e:
                     logger.error(f"Error reloading plugin {plugin_name}: {e}")
                     return f"Error reloading plugin {plugin_name}: {e}"
-        # NEW: download and load plugin from URL
         if cmd == "get" and len(action_args) == 2:
             _, plugin_url = action_args
             from .plugin_downloader import download_and_load_plugin

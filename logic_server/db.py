@@ -3,7 +3,6 @@ import peewee
 import config
 from shared.logger import setup_logger
 
-# Peewee database and models
 db = peewee.SqliteDatabase(config.DB_PATH)
 
 class BaseModel(peewee.Model):
@@ -35,20 +34,14 @@ class SchemaVersion(BaseModel):
 logger = setup_logger("logic_server.db")
 
 def init_db():
-    # connect and create tables if missing
     db.connect(reuse_if_open=True)
-    # include ChannelSetting and SchemaVersion for per-channel settings and migrations
     db.create_tables([User, Log, ChannelSetting, SchemaVersion], safe=True)
-    # initialize schema version if absent
     if not SchemaVersion.select().exists():
         SchemaVersion.create(version=1)
-    # run pending migrations
     run_migrations()
 
-# User-level operations
 
 def add_user(hostmask: str, nick: str, level: str):
-    # insert or update user entry
     User.replace(hostmask=hostmask, nick=nick, level=level).execute()
 
 def remove_user(hostmask: str):
@@ -61,12 +54,10 @@ def get_user_level(hostmask: str) -> str:
     except User.DoesNotExist:
         return "Normal"
 
-# Logging operations
 
 def log_message(hostmask: str, nick: str, target: str, message: str):
     Log.create(hostmask=hostmask, nick=nick, target=target, message=message)
 
-# Channel-specific configuration
 
 def get_channel_setting(channel: str) -> ChannelSetting:
     cs, _ = ChannelSetting.get_or_create(channel=channel)
@@ -109,10 +100,8 @@ def get_channel_log_context(channel: str, limit: int = 20):
         .order_by(Log.timestamp.desc())
         .limit(limit)
     )
-    # Return as list of (timestamp, nick, message), oldest first
     return [ (row.timestamp, row.nick, row.message) for row in reversed(list(rows)) ]
 
-# Migration helpers
 def get_schema_version() -> int:
     sv = SchemaVersion.select().order_by(SchemaVersion.version.desc()).first()
     return sv.version if sv else 0
@@ -120,7 +109,6 @@ def get_schema_version() -> int:
 def set_schema_version(version: int):
     SchemaVersion.create(version=version)
 
-# Migration framework
 MIGRATIONS: dict[int, callable] = {}
 
 def migration(version: int):

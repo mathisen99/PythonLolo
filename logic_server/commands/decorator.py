@@ -2,7 +2,6 @@ from shared.logger import setup_logger
 
 logger = setup_logger("commands")
 
-# Command registry
 COMMANDS: dict[str, callable] = {}
 
 def command(name: str):

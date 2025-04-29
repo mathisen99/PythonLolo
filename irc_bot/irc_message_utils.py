@@ -12,24 +12,15 @@ def sanitize_for_irc(text: str) -> str:
     - Collapse whitespace (except newlines)
     """
     clean = text.replace('\r', '')
-    # Remove code blocks (```...```)
     clean = re.sub(r'```(.*?)```', r'\1', clean, flags=re.DOTALL)
-    # Remove inline code (`code`)
     clean = re.sub(r'`([^`]+)`', r'\1', clean)
-    # Remove bold/italic markdown (**text**, *text*, __text__, _text_)
     clean = re.sub(r'([*_]{1,2})(\S.*?\S)\1', r'\2', clean)
-    # Remove blockquotes (> )
     clean = re.sub(r'^>\s?', '', clean, flags=re.MULTILINE)
-    # Remove markdown links [text](url) and images ![alt](url)
     clean = re.sub(r'!?\[[^\]]*\]\([^)]*\)', '', clean)
-    # Replace markdown bullets with dash
     clean = re.sub(r'^\s*[-*+]\s+', '- ', clean, flags=re.MULTILINE)
-    # Remove excessive punctuation and repeated symbols
     clean = re.sub(r'[\u2022\u25CF\u25A0]+', '-', clean)  # bullets
     clean = re.sub(r'[\u200B-\u200D\uFEFF]', '', clean)   # zero-width chars
-    # Remove control characters only (keep emojis, unicode)
     clean = ''.join(c for c in clean if unicodedata.category(c)[0] != 'C')
-    # Collapse whitespace except newlines
     clean = re.sub(r'[ \t]+', ' ', clean)
     clean = re.sub(r' *\n *', '\n', clean)
     return clean.strip()

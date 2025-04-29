@@ -15,14 +15,10 @@ def weather_command(channel: str, *args) -> str:
         url = f"http://wttr.in/{quote_plus(location)}?format=3"
         with urlopen(url) as resp:
             data = resp.read().decode('utf-8').strip()
-        # Remove any '+' that appear in the response (e.g., 'Mathisen+oslo: ...')
         if channel and channel != '':
-            # Remove '+' between nick and location if present
             nick_and_location = f"{channel}+{location}".replace('+', ' ')
-            # If the response starts with 'nick+location', replace with 'nick location'
             if data.lower().startswith(f"{channel.lower()}+{location.lower()}"):
                 data = data.replace(f"{channel}+{location}", f"{channel} {location}")
-            # Also, replace any '+' in the first word (nick) if present
             data = data.replace('+', ' ', 1)
         return data
     except Exception as e:
